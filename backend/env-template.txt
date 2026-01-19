@@ -1,0 +1,11 @@
+# Supabase Configuration
+# Get these from: https://supabase.com/dashboard/project/YOUR_PROJECT/settings/api
+SUPABASE_URL=https://your-project-id.supabase.co
+SUPABASE_KEY=your-anon-key-here
+
+# OpenAI Configuration (optional - for enhanced AI explanations)
+# Get from: https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-your-openai-api-key-here
+
+# Webhook Configuration (optional - for notifications)
+WEBHOOK_URL=https://your-webhook-endpoint.com

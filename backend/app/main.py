@@ -17,7 +17,12 @@ app = FastAPI(title="Job Description Bias Analyzer")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:3000"],  # Vite default ports
+    allow_origins=[
+        "http://localhost:5173",
+        "http://localhost:3000",
+        "https://job-description-bias-analyzer-1.vercel.app",
+        "https://job-description-bias-analyzer-1.vercel.app/"
+     ],  # Vite default ports
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +57,7 @@ async def chat(message: ChatMessage):
                 "requires_clarification": False,
                 "conversation_id": conversation_id,
                 "analysis_complete": False,
+                "current_response": "",
             }
 
         state = conversations[conversation_id]
@@ -67,7 +73,14 @@ async def chat(message: ChatMessage):
         result = await graph.ainvoke(state)
         logger.info(f"Graph result: {result}")
 
-        # 5. Update conversation state
+        # 5. Append assistant response to messages if available
+        if result.get("current_response"):
+            result["messages"].append({
+                "role": "assistant",
+                "content": result["current_response"]
+            })
+
+        # 6. Update conversation state
         conversations[conversation_id] = result
 
         # 6. Prepare data for Supabase
@@ -79,12 +92,16 @@ async def chat(message: ChatMessage):
             "inclusive_alternative": result.get("inclusive_alternative", "")
         }
 
-        # 7. Store in Supabase
+        # 7. Store in Supabase (optional - don't fail if not configured)
         try:
-            SupabaseClient.store_analysis(analysis_data)
-            logger.info("Analysis stored successfully in Supabase")
+            storage_result = SupabaseClient.store_analysis(analysis_data)
+            if storage_result:
+                logger.info("Analysis stored successfully in Supabase")
+            else:
+                logger.info("Supabase storage skipped (not configured or failed)")
         except Exception as e:
-            logger.error(f"Supabase insert failed: {e}")
+            logger.warning(f"Supabase storage failed (continuing without storage): {str(e)}")
+            storage_result = False
 
         # 8. Get assistant response
         assistant_messages = [

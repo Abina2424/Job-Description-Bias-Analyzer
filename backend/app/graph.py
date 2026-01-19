@@ -1,7 +1,8 @@
 from typing import TypedDict, Annotated, Literal
 from langgraph.graph import StateGraph, END
 from langchain_openai import ChatOpenAI
-from langchain.prompts import ChatPromptTemplate
+from langchain_core.prompts import ChatPromptTemplate
+
 import os
 from app.models import BiasAnalysis
 from app.supabase_client import SupabaseClient
@@ -23,7 +24,7 @@ FEMININE_KEYWORDS = [
 
 
 class GraphState(TypedDict):
-    messages: Annotated[list, lambda x, y: x + y]
+    messages: list  # Remove the Annotated wrapper to avoid duplication
     job_description: str
     biased_terms: list
     bias_type: Literal["masculine", "feminine", "neutral", None]
@@ -32,6 +33,7 @@ class GraphState(TypedDict):
     requires_clarification: bool
     conversation_id: str
     analysis_complete: bool
+    current_response: str  # Add field for current response
 
 
 def detect_bias_keywords(text: str) -> tuple[list, Literal["masculine", "feminine", "neutral"]]:
@@ -187,12 +189,10 @@ async def masculine_bias_node(state: GraphState) -> GraphState:
 
 **Inclusive Alternative:**
 {state['inclusive_alternative']}"""
-    
-    state["messages"].append({
-        "role": "assistant",
-        "content": response_text
-    })
-    
+
+    # Set response instead of appending to messages
+    state["current_response"] = response_text
+
     return state
 
 
@@ -247,12 +247,10 @@ async def feminine_bias_node(state: GraphState) -> GraphState:
 
 **Inclusive Alternative:**
 {state['inclusive_alternative']}"""
-    
-    state["messages"].append({
-        "role": "assistant",
-        "content": response_text
-    })
-    
+
+    # Set response instead of appending to messages
+    state["current_response"] = response_text
+
     return state
 
 
@@ -305,12 +303,10 @@ async def neutral_node(state: GraphState) -> GraphState:
 
 **Recommendation:**
 {state['inclusive_alternative']}"""
-    
-    state["messages"].append({
-        "role": "assistant",
-        "content": response_text
-    })
-    
+
+    # Set response instead of appending to messages
+    state["current_response"] = response_text
+
     return state
 
 
