@@ -16,7 +16,9 @@ app.add_middleware(
         "http://localhost:5173",
         "http://localhost:3000",
         "https://job-description-bias-analyzer-1.vercel.app",
-        "https://job-description-bias-analyzer-1.vercel.app/"
+        "https://job-description-bias-analyzer-1.vercel.app/",
+        "https://job-description-bias-analyzer-1-3tyk2jsj9-abina-as-projects.vercel.app",
+        "https://job-description-bias-analyzer-1-3tyk2jsj9-abina-as-projects.vercel.app/"
     ],
     allow_credentials=True,
     allow_methods=["*"],
