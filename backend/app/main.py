@@ -92,16 +92,12 @@ async def chat(message: ChatMessage):
             "inclusive_alternative": result.get("inclusive_alternative", "")
         }
 
-        # 7. Store in Supabase (optional - don't fail if not configured)
-        try:
-            storage_result = SupabaseClient.store_analysis(analysis_data)
-            if storage_result:
-                logger.info("Analysis stored successfully in Supabase")
-            else:
-                logger.info("Supabase storage skipped (not configured or failed)")
-        except Exception as e:
-            logger.warning(f"Supabase storage failed (continuing without storage): {str(e)}")
-            storage_result = False
+        # 7. Store in Supabase
+        storage_result = SupabaseClient.store_analysis(analysis_data)
+        if storage_result:
+            logger.info("Analysis stored successfully in Supabase")
+        else:
+            logger.info("Supabase storage skipped (not configured or failed)")
 
         # 8. Get assistant response
         assistant_messages = [
