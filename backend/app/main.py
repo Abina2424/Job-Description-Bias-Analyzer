@@ -1,51 +1,37 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
-import os
 import uuid
 import logging
 from app.models import ChatMessage, ChatResponse
 from app.graph import create_graph
-from app.supabase_client import SupabaseClient
-from app.models import BiasAnalysis
-
 
 load_dotenv()
 
 app = FastAPI(title="Job Description Bias Analyzer")
 
-# CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:5173",
         "http://localhost:3000",
         "https://job-description-bias-analyzer-1.vercel.app",
-        "https://job-description-bias-analyzer-1.vercel.app/"
-     ],  # Vite default ports
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Initialize graph
 graph = create_graph()
-
-# Store conversations (in production, use Redis or database)
 conversations = {}
-
-# Setup logger once
 logger = logging.getLogger("uvicorn.error")
 
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(message: ChatMessage):
-    """Main chat endpoint for job description analysis"""
     try:
-        # 1. Get or create conversation ID
         conversation_id = message.conversation_id or str(uuid.uuid4())
 
-        # 2. Initialize or get conversation state
         if conversation_id not in conversations:
             conversations[conversation_id] = {
                 "messages": [],
@@ -62,47 +48,24 @@ async def chat(message: ChatMessage):
 
         state = conversations[conversation_id]
 
-        # 3. Add user message
         state["messages"].append({
             "role": "user",
             "content": message.message
         })
 
-        # 4. Run agent graph
-        logger.info(f"Invoking graph with state: {state}")
         result = await graph.ainvoke(state)
-        logger.info(f"Graph result: {result}")
 
-        # 5. Append assistant response to messages if available
         if result.get("current_response"):
             result["messages"].append({
                 "role": "assistant",
                 "content": result["current_response"]
             })
 
-        # 6. Update conversation state
         conversations[conversation_id] = result
 
-        # 6. Prepare data for Supabase
-        analysis_data = {
-            "job_description": result.get("job_description", message.message),
-            "biased_terms": result.get("biased_terms", []),
-            "bias_type": result.get("bias_type") or "neutral",
-            "bias_explanation": result.get("bias_explanation", ""),
-            "inclusive_alternative": result.get("inclusive_alternative", "")
-        }
-
-        # 7. Store in Supabase
-        storage_result = SupabaseClient.store_analysis(analysis_data)
-        if storage_result:
-            logger.info("Analysis stored successfully in Supabase")
-        else:
-            logger.info("Supabase storage skipped (not configured or failed)")
-
-        # 8. Get assistant response
         assistant_messages = [
             m for m in result.get("messages", [])
-            if isinstance(m, dict) and m.get("role") == "assistant"
+            if m.get("role") == "assistant"
         ]
 
         response_text = (
@@ -123,10 +86,4 @@ async def chat(message: ChatMessage):
 
 @app.get("/health")
 async def health():
-    """Health check endpoint"""
     return {"status": "healthy"}
-
-
-if __name__ == "__main__":
-    import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
